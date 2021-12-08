@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  namespace: workflow
+  generateName: multistep-
+  annotations:
+    workflows.argoproj.io/description: |
+      This is an example of steps workflow
+spec:
+  serviceAccountName: workflow
+  entrypoint: multistep
+  templates:
+  - name: multistep
+    steps:
+    - - name: 1st-step
+        templateRef:
+          name: wkflowtpl-versions
+          template: versions
+        arguments:
+          parameters:
+          - name: binary
+            value: "helm"
+    - - name: 2nd-step1-parralel
+        templateRef:
+          name: wkflowtpl-versions
+          template: versions
+        arguments:
+          parameters:
+          - name: binary
+            value: "argocd"
+      - name: 2nd-step2-parralel
+        templateRef:
+          name: wkflowtpl-versions
+          template: versions
+        arguments:
+          parameters:
+          - name: binary
+            value: "argo"

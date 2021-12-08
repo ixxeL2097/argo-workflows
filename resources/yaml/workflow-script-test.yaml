@@ -10,10 +10,7 @@ spec:
   - name: test
     container:
       image: ixxel/multi-tools-alpine:latest
-      command:
-      - /bin/bash
-      - -c
-      - |
-         vault --version
-         kubectl version
-         oc version
+      command: [bash]
+      source: |
+        vault --version
+        helm --version
