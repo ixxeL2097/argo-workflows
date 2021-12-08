@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: wkflowtpl-versions
+  namespace: workflow
+spec:
+  entrypoint: versions
+  serviceAccountName: workflow
+  arguments:
+    parameters:
+      - name: binary
+        value: vault
+  templates:
+    - name: versions
+      inputs:
+        parameters:
+          - name: binary
+      container:
+        image: ixxel/multi-tools-alpine:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          "{{inputs.parameters.binary}}"" --version
