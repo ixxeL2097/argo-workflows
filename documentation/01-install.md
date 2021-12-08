@@ -46,3 +46,8 @@ mv ./argo-linux-amd64 /usr/local/bin/argo
 # Test installation
 argo version
 ```
+
+
+### Grafana dashboard
+The Grafana dashboard is available at ID 13927 
+- https://grafana.com/grafana/dashboards/13927
