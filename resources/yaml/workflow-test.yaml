@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  namespace: workflow
+  generateName: all-version-
+spec:
+  serviceAccountName: workflow
+  entrypoint: test
+  templates:
+  - name: test
+    container:
+      image: ixxel/multi-tools-alpine:latest
+      command:
+      - /bin/bash
+      - -c
+      - |
+         vault --version
+         kubectl version
+         oc version
