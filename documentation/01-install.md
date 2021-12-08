@@ -14,9 +14,9 @@ Install it in argo namespace:
 ```
 helm upgrade -i argo-workflows -n argo --create-namespace argo-workflows/ --set workflow.serviceAccount.create=true \
                                                                           --set workflow.serviceAccount.name=argo-workflow \
-                                                                          --set workflow.serviceAccount.name=argo-workflow \
-                                                                          --set workflow.serviceMonitor.enabled=true \
-                                                                          --set workflow.serviceMonitor.additionalLabels.release=prom
+                                                                          --set controller.metricsConfig.enabled=true \
+                                                                          --set controller.serviceMonitor.enabled=true \
+                                                                          --set controller.serviceMonitor.additionalLabels.release=prom
 ```
 
 Get auth token to authenticate in auth token mode :
