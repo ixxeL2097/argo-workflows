@@ -61,6 +61,15 @@ spec:
             value: "{{steps.git-clone.outputs.parameters.git-dir-name}}"
           - name: src-dir-name
             value: "{{workflow.parameters.resources-directory}}"
+          - name: image-name
+            value: "{{workflow.parameters.image-name}}"
+    # - - name: cleanup-workflow
+    #     template: delete-resource
+    #     arguments:
+    #       parameters:
+    #       - name: selector
+    #         value: cleanup=true
+        
 
   - name: create-pvc
     resource:
@@ -72,6 +81,7 @@ spec:
           generateName: pipeline-pvc-
           labels:
             argo-pipeline: "true"
+            cleanup: "true"
         spec:
           accessModes: ["ReadWriteOnce"]
           storageClassName: local-path
@@ -83,6 +93,17 @@ spec:
       - name: pvc-name
         valueFrom:
           jsonPath: '{.metadata.name}'
+
+  - name: delete-resource
+    inputs:
+      parameters:
+      - name: selector
+    resource:
+      action: delete
+      flags: [
+        "persistentvolumeclaim", "--selector", "{{inputs.parameters.selector}}"
+      ]
+
 
   # - name: create-configmap
   #   resource:

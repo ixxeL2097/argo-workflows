@@ -49,10 +49,16 @@ spec:
           echo -e "${CYAN}[ INFO ] > Hadolint version.${BLANK}"
           hadolint --version
           echo -e "${YELLOW}[ EXECUTING ] > Executing Dockerfile linting.${BLANK}"
-          hadolint -V "{{inputs.parameters.src-dir-name}}"/Dockerfile --format "{{inputs.parameters.hadolint-format}}" \
-                                                                      --failure-threshold "{{inputs.parameters.hadolint-treshold}}" | jq -C
+          if [[ "{{inputs.parameters.hadolint-format}}" != "tty" || "{{inputs.parameters.hadolint-format}}" != "tty" ]]
+          then
+            hadolint -V "{{inputs.parameters.src-dir-name}}"/Dockerfile --format "{{inputs.parameters.hadolint-format}}" \
+                                                                        --failure-threshold "{{inputs.parameters.hadolint-treshold}}" | jq -C
+          else
+            hadolint -V "{{inputs.parameters.src-dir-name}}"/Dockerfile --format "{{inputs.parameters.hadolint-format}}" \
+                                                                        --failure-threshold "{{inputs.parameters.hadolint-treshold}}"
+          fi
           EXIT_CODE="${PIPESTATUS[0]}"
-          if [ ${EXIT_CODE} -ne 0 ]
+          if [[ ${EXIT_CODE} -ne 0 ]]
           then
             echo -e "${RED}[ FAIL ] > Hadolint scan failed on treshold '"{{inputs.parameters.hadolint-treshold}}"'${BLANK}"
           else
