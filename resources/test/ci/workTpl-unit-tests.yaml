@@ -20,7 +20,6 @@ spec:
             default: json
           - name: hadolint-treshold
             default: error
-          - name: image-name
           - name: pvc-name
           # - name: configmap-name
       volumes:
@@ -45,7 +44,7 @@ spec:
           CYAN="\033[1;36m"
           BLANK="\033[0m"
 
-          echo -e "${BLUE}[ STEP - LINTING DOCKERFILE ] > Linting "{{inputs.parameters.image-name}}" Dockerfile with Hadolint.${BLANK}"
+          echo -e "${BLUE}[ STEP - LINTING DOCKERFILE ] > Linting Dockerfile with Hadolint.${BLANK}"
           echo -e "${CYAN}[ INFO ] > Hadolint version.${BLANK}"
           hadolint --version
           echo -e "${YELLOW}[ EXECUTING ] > Executing Dockerfile linting.${BLANK}"

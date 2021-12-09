@@ -20,8 +20,6 @@ spec:
   entrypoint: unit-tests
   arguments:
     parameters:
-    - name: image-name
-      value: multi-tools-alpine
     - name: repo
       value: https://github.com/ixxeL-docker/multi-tools-alpine.git
     - name: branch
@@ -66,8 +64,6 @@ spec:
             value: "{{steps.git-clone.outputs.parameters.git-dir-name}}"
           - name: src-dir-name
             value: "{{workflow.parameters.resources-directory}}"
-          - name: image-name
-            value: "{{workflow.parameters.image-name}}"
     # - - name: cleanup-workflow
     #     template: delete-resource
     #     arguments:
