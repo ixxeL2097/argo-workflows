@@ -11,6 +11,11 @@ spec:
     secondsAfterCompletion: 60
     secondsAfterSuccess: 60
     secondsAfterFailure: 60
+  podGC:
+    strategy: OnWorkflowCompletion
+    labelSelector:
+      matchLabels:
+        should-be-deleted: "true"
   serviceAccountName: workflow
   entrypoint: unit-tests
   arguments:

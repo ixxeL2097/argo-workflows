@@ -1,0 +1,74 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  namespace: workflow
+  generateName: ci-template-
+  annotations:
+    workflows.argoproj.io/description: |
+      This is an example of ci workflow
+spec:
+  ttlStrategy:
+    secondsAfterCompletion: 60
+    secondsAfterSuccess: 60
+    secondsAfterFailure: 60
+  podGC:
+    strategy: OnWorkflowCompletion
+    labelSelector:
+      matchLabels:
+        should-be-deleted: "true"
+  serviceAccountName: workflow
+  entrypoint: unit-tests
+  arguments:
+    parameters:
+    - name: image-name
+      value: multi-tools-alpine
+    - name: repo
+      value: https://github.com/ixxeL-docker/multi-tools-alpine.git
+    - name: branch
+      value: main
+    - name: resources-directory
+      value: resources
+    # - name: hadolint-format
+    #   value: json
+    # - name: hadolint-treshold
+    #   value: error
+  volumeClaimTemplates:
+  - metadata:
+      name: raw-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 1Gi
+
+  templates:
+  - name: unit-tests
+    steps:
+    - - name: git-clone
+        templateRef:
+          name: git-clone-pvc
+          template: git-clone
+        arguments:
+          parameters:
+          - name: pvc-name
+            value: "{{workflow.name}}-raw-data"
+          - name: repo
+            value: "{{workflow.parameters.repo}}"
+          - name: branch
+            value: "{{workflow.parameters.branch}}"
+    - - name: hadolint
+        templateRef:
+          name: hadolint
+          template: hadolint
+        arguments:
+          parameters:
+          - name: pvc-name
+            value: "{{workflow.name}}-raw-data"
+          - name: git-dir-name
+            value: "{{steps.git-clone.outputs.parameters.git-dir-name}}"
+          - name: src-dir-name
+            value: "{{workflow.parameters.resources-directory}}"
+          - name: image-name
+            value: "{{workflow.parameters.image-name}}"
+
