@@ -1,0 +1,107 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  namespace: workflow
+  generateName: ci-template-
+  annotations:
+    workflows.argoproj.io/description: |
+      This is an example of ci workflow
+spec:
+  ttlStrategy:
+    secondsAfterCompletion: 60
+    secondsAfterSuccess: 60
+    secondsAfterFailure: 60
+  serviceAccountName: workflow
+  entrypoint: unit-tests
+  arguments:
+    parameters:
+    - name: image-name
+      value: multi-tools-alpine
+    - name: repo
+      value: https://github.com/ixxeL-docker/multi-tools-alpine.git
+    - name: branch
+      value: main
+    - name: resources-directory
+      value: resources
+    # - name: hadolint-format
+    #   value: json
+    # - name: hadolint-treshold
+    #   value: error
+
+  templates:
+  - name: unit-tests
+    steps:
+    - - name: create-persistent-volume
+        template: create-pvc
+      # - name: create-configmap-values
+      #   template: create-configmap
+    - - name: git-clone
+        templateRef:
+          name: git-clone-pvc
+          template: git-clone
+        arguments:
+          parameters:
+          - name: pvc-name
+            value: "{{steps.create-persistent-volume.outputs.parameters.pvc-name}}"
+          - name: repo
+            value: "{{workflow.parameters.repo}}"
+          - name: branch
+            value: "{{workflow.parameters.branch}}"
+    - - name: hadolint
+        templateRef:
+          name: hadolint
+          template: hadolint
+        arguments:
+          parameters:
+          - name: pvc-name
+            value: "{{steps.create-persistent-volume.outputs.parameters.pvc-name}}"
+          # - name: configmap-name
+          #   value: "{{steps.create-configmap-values.outputs.parameters.configmap-name}}"
+          - name: git-dir-name
+            value: "{{steps.git-clone.outputs.parameters.git-dir-name}}"
+          - name: src-dir-name
+            value: "{{workflow.parameters.resources-directory}}"
+
+  - name: create-pvc
+    resource:
+      action: create
+      manifest: |
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          generateName: pipeline-pvc-
+          labels:
+            argo-pipeline: "true"
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          storageClassName: local-path
+          resources:
+            requests:
+              storage: 1Gi
+    outputs:
+      parameters:
+      - name: pvc-name
+        valueFrom:
+          jsonPath: '{.metadata.name}'
+
+  # - name: create-configmap
+  #   resource:
+  #     action: create
+  #     manifest: |
+  #       apiVersion: v1
+  #       kind: ConfigMap
+  #       metadata:
+  #         generateName: pipeline-values-
+  #         labels:
+  #           argo-pipeline: "true"
+  #       data:
+  #         IMAGE_NAME: "{{workflow.parameters.image-name}}"
+  #         HADOLINT_FORMAT: "{{workflow.parameters.hadolint-format}}"
+  #         HADOLINT_TRESHOLD: "{{workflow.parameters.hadolint-treshold}}"
+  #   outputs:
+  #     parameters:
+  #     - name: configmap-name
+  #       valueFrom:
+  #         jsonPath: '{.metadata.name}'
+
+

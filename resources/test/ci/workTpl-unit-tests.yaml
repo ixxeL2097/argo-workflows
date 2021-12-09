@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: hadolint
+  namespace: workflow
+spec:
+  entrypoint: hadolint
+  serviceAccountName: workflow
+  templates:
+    - name: hadolint
+      inputs:
+        parameters:
+          - name: docker-img
+            default: ixxel/unit-tests-alpine:latest
+          - name: git-dir-name
+            default: git
+          - name: src-dir-name
+            default: resources
+          - name: hadolint-format
+            default: json
+          - name: hadolint-treshold
+            default: error
+          - name: image-name
+          - name: pvc-name
+          # - name: configmap-name
+      volumes:
+        - name: workdir
+          persistentVolumeClaim:
+            claimName: "{{inputs.parameters.pvc-name}}"
+      container:
+        workingDir: /mnt/"{{inputs.parameters.git-dir-name}}"
+        image: "{{inputs.parameters.docker-img}}"
+        volumeMounts:
+        - name: workdir
+          mountPath: /mnt
+        command:
+        - /bin/bash
+        - -c
+        - |
+          RED="\033[1;31m"
+          GREEN="\033[1;32m"
+          YELLOW="\033[1;33m"
+          BLUE="\033[1;34m"
+          PURPLE="\033[1;35m"
+          CYAN="\033[1;36m"
+          BLANK="\033[0m"
+
+          echo -e "${BLUE}[ STEP - LINTING DOCKERFILE ] > Linting "{{inputs.parameters.image-name}}" Dockerfile with Hadolint.${BLANK}"
+          echo -e "${CYAN}[ INFO ] > Hadolint version.${BLANK}"
+          hadolint --version
+          echo -e "${YELLOW}[ EXECUTING ] > Executing Dockerfile linting.${BLANK}"
+          hadolint -V "{{inputs.parameters.src-dir-name}}"/Dockerfile --format "{{inputs.parameters.hadolint-format}}" \
+                                                                      --failure-threshold "{{inputs.parameters.hadolint-treshold}}" | jq -C
+          EXIT_CODE="${PIPESTATUS[0]}"
+          if [ ${EXIT_CODE} -ne 0 ]
+          then
+            echo -e "${RED}[ FAIL ] > Hadolint scan failed on treshold '"{{inputs.parameters.hadolint-treshold}}"'${BLANK}"
+          else
+            echo -e "${GREEN}[ SUCCESS ] > Hadolint scan succeeded on treshold '"{{inputs.parameters.hadolint-treshold}}"'${BLANK}"
+          fi
+          exit ${EXIT_CODE}

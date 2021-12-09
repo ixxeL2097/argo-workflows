@@ -1,0 +1,131 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  namespace: workflow
+  generateName: ci-example-
+  annotations:
+    workflows.argoproj.io/description: |
+      This is an example of ci workflow
+spec:
+  serviceAccountName: workflow
+  # entrypoint is the name of the template used as the starting point of the workflow
+  entrypoint: git-clone
+  # the 'ci-example' template accepts an parameter 'branch', with a default of 'main'.
+  # this can be overridden via argo CLI (e.g. `argo submit ci.yaml -p branch=feat`)
+  arguments:
+    parameters:
+    - name: repo
+      value: https://github.com/ixxeL-docker/multi-tools-alpine.git
+    - name: branch
+      value: main
+    - name: pvc-dir
+      value: /mnt
+    - name: git-dir
+      value: /git
+  # a temporary volume, named workdir, will be used as a working directory
+  # for this workflow. This volume is passed around from step to step.
+  volumeClaimTemplates:
+  - metadata:
+      name: workdir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: local-path # Be careful with NFS storage, getting error : "executor error: artifact code failed to load: no locks available"
+      resources:
+        requests:
+          storage: 1Gi
+
+  templates:
+  - name: git-clone
+    inputs:
+      parameters:
+      - name: repo
+      - name: branch
+      artifacts:
+      - name: code
+        path: "{{workflow.parameters.pvc-dir}}{{workflow.parameters.git-dir}}"
+        git:
+          repo: "{{inputs.parameters.repo}}"
+          revision: "{{inputs.parameters.branch}}"
+    container:
+      workingDir: "{{workflow.parameters.pvc-dir}}{{workflow.parameters.git-dir}}"
+      image: ixxel/multi-tools-alpine:latest
+      command:
+      - /bin/bash
+      - -c
+      - |
+         ls -la 
+         git status
+      volumeMounts:
+      - name: workdir
+        mountPath: "{{workflow.parameters.pvc-dir}}"
+
+
+
+
+
+    steps:
+    - - name: build
+        template: build-golang-example
+        arguments:
+          parameters:
+          - name: branch
+            value: "{{inputs.parameters.branch}}"
+
+
+    - - name: build
+        template: build-golang-example
+        arguments:
+          parameters:
+          - name: branch
+            value: "{{inputs.parameters.branch}}"
+    # the test step expands into three parallel steps running
+    # different operating system images. each mounts the workdir
+    # and runs the compiled binary from the build step.
+    - - name: test
+        template: run-hello
+        arguments:
+          parameters:
+          - name: os-image
+            value: "{{item.image}}:{{item.tag}}"
+        withItems:
+        - { image: 'debian', tag: '9.1' }
+        - { image: 'alpine', tag: '3.6' }
+        - { image: 'ubuntu', tag: '17.10' }
+
+  - name: build-golang-example
+    inputs:
+      parameters:
+      - name: revision
+      artifacts:
+      - name: code
+        path: /go/src/github.com/golang/example
+        git:
+          repo: https://github.com/golang/example.git
+          revision: "{{inputs.parameters.revision}}"
+    container:
+      image: golang:1.8
+      command: [sh, -c]
+      args: ["
+        cd /go/src/github.com/golang/example/hello &&
+        git status &&
+        go build -v .
+      "]
+      volumeMounts:
+      - name: workdir
+        mountPath: /go
+
+  - name: run-hello
+    inputs:
+      parameters:
+      - name: os-image
+    container:
+      image: "{{inputs.parameters.os-image}}"
+      command: [sh, -c]
+      args: ["
+        uname -a ;
+        cat /etc/os-release ;
+        /go/src/github.com/golang/example/hello/hello
+      "]
+      volumeMounts:
+      - name: workdir
+        mountPath: /go

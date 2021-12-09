@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: git-clone-pvc
+  namespace: workflow
+spec:
+  entrypoint: git-clone
+  serviceAccountName: workflow
+  templateDefaults:
+    retryStrategy:
+      limit: 2
+  templates:
+    - name: git-clone
+      inputs:
+        parameters:
+          - name: docker-img
+            default: alpine/git:latest
+          - name: git-dir-name
+            default: git
+          - name: pvc-name
+          - name: repo
+          - name: branch
+            default: main
+        artifacts:
+        - name: code
+          path: /mnt/"{{inputs.parameters.git-dir-name}}"
+          git:
+            repo: "{{inputs.parameters.repo}}"
+            revision: "{{inputs.parameters.branch}}"
+      outputs:
+        parameters:
+          - name: git-dir-name
+            value: "{{inputs.parameters.git-dir-name}}"
+      volumes:
+        - name: workdir
+          persistentVolumeClaim:
+            claimName: "{{inputs.parameters.pvc-name}}"
+      container:
+        workingDir: /mnt/"{{inputs.parameters.git-dir-name}}"
+        image: "{{inputs.parameters.docker-img}}"
+        volumeMounts:
+        - name: workdir
+          mountPath: /mnt
+        command:
+        - /bin/sh
+        - -c
+        - |
+          RED="\033[1;31m"
+          GREEN="\033[1;32m"
+          BLANK="\033[0m"
+
+          echo -e "${GREEN}[ SUCCESS ] > Git clone succeeded !${BLANK}"
+          git status
+          ls -la

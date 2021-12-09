@@ -1,0 +1,83 @@
+kind: Sensor
+metadata:
+  name: calendar-sensor
+  labels:
+    # sensor controller with instanceId "argo-events" will process this sensor
+    sensors.argoproj.io/sensor-controller-instanceid: argo-events
+    # sensor controller will use this label to match with it's own version
+    # do not remove
+    argo-events-sensor-version: v0.10
+spec:
+  template:
+    spec:
+      containers:
+        - name: "sensor"
+          image: "argoproj/sensor"
+          imagePullPolicy: Always
+      serviceAccountName: argo-events-sa
+  dependencies:
+    - name: "calendar-gateway:poll-scm"
+  eventProtocol:
+    type: "HTTP"
+    http:
+      port: "9300"
+  triggers:
+    - template:
+        name: calendar-workflow-trigger
+        group: argoproj.io
+        version: v1alpha1
+        kind: Workflow
+        source:
+          configmap: |
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              name: grafana-dashboards
+              generateName: grafana-dashboard-ci-
+            spec:
+              entrypoint: ci
+              serviceAccountName: argo
+              arguments:
+                parameters:
+                  - name: revision
+                    value: master
+                  - name: repo
+                    value: git@bitbucket.org:***
+                  - name: source
+                    value: "monitoring/grafana/dashboards/"
+                  - name: destination
+                    value: s3://***
+              templates:
+                - name: ci
+                  steps:
+                    - - name: checkout
+                        templateRef:
+                          name: checkout
+                          template: git
+                        arguments:
+                          parameters:
+                            - name: repo
+                              value: "{{workflow.parameters.repo}}"
+                            - name: revision
+                              value: "{{workflow.parameters.revision}}"
+                    - - name: linting
+                        templateRef:
+                          name: linting
+                          template: json
+                        arguments:
+                          artifacts:
+                            - name: source
+                              from: "{{steps.checkout.outputs.artifacts.source}}"
+                    - - name: publish
+                        templateRef:
+                          name: publish
+                          template: s3
+                        arguments:
+                          artifacts:
+                            - name: source
+                              from: "{{steps.checkout.outputs.artifacts.source}}"
+                          parameters:
+                            - name: source
+                              value: "{{workflow.parameters.source}}"
+                            - name: destination
+                              value: "{{workflow.parameters.destination}}"
